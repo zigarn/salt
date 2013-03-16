@@ -226,7 +226,10 @@ setup_kwargs = {'name': NAME,
                                  'doc/man/salt-minion.1',
                                  ]),
                                ('share/man/man7', ['doc/man/salt.7']),
-                               ],
+                               ('/etc/init', [
+                                    'pkg/salt-master.conf',
+                                    'pkg/salt-minion.conf',
+                               ])],
                 # Required for esky builds
                 'install_requires': requirements,
                 # The dynamic module loading in salt.modules makes this
