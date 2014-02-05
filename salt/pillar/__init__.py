@@ -7,6 +7,7 @@ Render the pillar data
 import os
 import collections
 import logging
+import copy
 
 # Import salt libs
 import salt.loader
@@ -93,6 +94,7 @@ class Pillar(object):
         # Store the file_roots path so we can restore later. Issue 5449
         self.actual_file_roots = opts['file_roots']
         # use the local file client
+        self.ext_pillar_refs = copy.deepcopy(opts.get('ext_pillar', []))
         self.opts = self.__gen_opts(opts, grains, id_, saltenv, ext)
         self.client = salt.fileclient.get_file_client(self.opts)
 
@@ -157,10 +159,7 @@ class Pillar(object):
         else:
             opts['state_top'] = os.path.join('salt://', opts['state_top'])
         if self.__valid_ext(ext):
-            if 'ext_pillar' in opts:
-                opts['ext_pillar'].append(ext)
-            else:
-                opts['ext_pillar'] = [ext]
+            self.ext_pillar_refs.append(ext)
         return opts
 
     def _get_envs(self):
@@ -436,12 +435,12 @@ class Pillar(object):
         '''
         Render the external pillar data
         '''
-        if not 'ext_pillar' in self.opts:
+        if not self.ext_pillar_refs:
             return {}
-        if not isinstance(self.opts['ext_pillar'], list):
+        if not isinstance(self.ext_pillar_refs, list):
             log.critical('The "ext_pillar" option is malformed')
             return {}
-        for run in self.opts['ext_pillar']:
+        for run in self.ext_pillar_refs:
             if not isinstance(run, dict):
                 log.critical('The "ext_pillar" option is malformed')
                 return {}
