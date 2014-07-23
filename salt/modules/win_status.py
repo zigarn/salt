@@ -384,3 +384,16 @@ def master(master=None, connected=True):
                 'minion', opts=__opts__, listen=False
             )
             event.fire_event({'master': master}, '__master_connected')
+
+
+def all_status():
+    '''
+Return a composite of all status data and info for this minion.
+
+CLI Example:
+
+.. code-block:: bash
+
+salt '*' status.all_status
+'''
+    return {'procs': procs()}
