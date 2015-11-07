@@ -19,6 +19,9 @@ log = logging.getLogger(__name__)
 
 __virtualname__ = 'apache'
 
+SITE_AVAILABLE_DIR = '/etc/apache2/sites-available'
+SITE_ENABLED_DIR = '/etc/apache2/sites-enabled'
+
 
 def __virtual__():
     '''
@@ -56,78 +59,119 @@ def check_site_enabled(site):
 
         salt '*' apache.check_site_enabled example.com
     '''
-    if os.path.islink('/etc/apache2/sites-enabled/{0}'.format(site)):
+    if os.path.islink('{0}/{1}'.format(SITE_ENABLED_DIR, site)):
         return True
-    elif site == 'default' and os.path.islink('/etc/apache2/sites-enabled/000-{0}'.format(site)):
+    elif site == 'default' and os.path.islink('{0}/000-{1}'.format(SITE_ENABLED_DIR, site)):
         return True
     else:
         return False
 
 
-def a2ensite(site):
+def list_sites():
     '''
-    Runs a2ensite for the given site.
+    List the sites in a dict::
+
+        {'<site_name>': '<enabled_status>'}
+
+    CLI Example:
+
+    .. code-block:: bash
+
+        salt '*' pkg.list_sites
+    '''
+    site_list = os.listdir(SITE_AVAILABLE_DIR)
+    ret = {}
+    for site in site_list:
+        ret[site] = check_site_enabled(site)
+    return ret
+
+
+def a2ensite(name=None,
+             sites=None):
+    '''
+    Enable sites by running ``a2ensite``.
 
     This will only be functional on Debian-based operating systems (Ubuntu,
     Mint, etc).
 
-    CLI Examples:
+    name
+        Name of the site to be enabled.
 
-    .. code-block:: bash
+        CLI Example:
 
-        salt '*' apache.a2ensite example.com
+        .. code-block:: bash
+
+            salt '*' apache.a2ensite example.com
+
+    Multiple Sites Enabling Options:
+
+    sites
+        A list of sites to enable. Must be passed as a python list.
+
+        CLI Example:
+
+        .. code-block:: bash
+
+            salt '*' apache.a2ensite sites='["example.com", "saltstack.com"]'
     '''
-    ret = {}
-    command = ['a2ensite', site]
+    command = ['a2ensite']
+    if name:
+        command.append(name)
+    if sites:
+        command.extend(sites)
 
-    try:
-        status = __salt__['cmd.retcode'](command, python_shell=False)
-    except Exception as e:
-        return e
+    old = list_sites()
+    res = __salt__['cmd.run_all'](command, python_shell=False)
+    new = list_sites()
+    ret = salt.utils.compare_dicts(old, new)
 
-    ret['Name'] = 'Apache2 Enable Site'
-    ret['Site'] = site
-
-    if status == 1:
-        ret['Status'] = 'Site {0} Not found'.format(site)
-    elif status == 0:
-        ret['Status'] = 'Site {0} enabled'.format(site)
-    else:
-        ret['Status'] = status
+    if res['retcode'] != 0:
+        ret['errors'] = res['stderr']
 
     return ret
 
 
-def a2dissite(site):
+def a2dissite(name=None,
+              sites=None):
     '''
-    Runs a2dissite for the given site.
+    Disable sites by running ``a2dissite``.
 
     This will only be functional on Debian-based operating systems (Ubuntu,
     Mint, etc).
 
-    CLI Examples:
+    name
+        Name of the site to be disabled.
 
-    .. code-block:: bash
+        CLI Example:
 
-        salt '*' apache.a2dissite example.com
+        .. code-block:: bash
+
+            salt '*' apache.a2dissite example.com
+
+    Multiple Sites Disabling Options:
+
+    sites
+        A list of sites to disable. Must be passed as a python list.
+
+        CLI Example:
+
+        .. code-block:: bash
+
+            salt '*' apache.a2dissite sites='["example.com", "saltstack.com"]'
     '''
-    ret = {}
-    command = ['a2dissite', site]
+    command = ['a2dissite']
+    if name:
+        command.append(name)
+    if sites:
+        command.extend(sites)
 
-    try:
-        status = __salt__['cmd.retcode'](command, python_shell=False)
-    except Exception as e:
-        return e
+    old = list_sites()
+    res = __salt__['cmd.run_all'](command, python_shell=False)
+    new = list_sites()
+    ret = salt.utils.compare_dicts(old, new)
 
-    ret['Name'] = 'Apache2 Disable Site'
-    ret['Site'] = site
-
-    if status == 256:
-        ret['Status'] = 'Site {0} Not found'.format(site)
-    elif status == 0:
-        ret['Status'] = 'Site {0} disabled'.format(site)
-    else:
-        ret['Status'] = status
+    if res['retcode'] != 0:
+        ret['errors'] = res['stderr']
 
     return ret
 
